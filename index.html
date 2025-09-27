@@ -579,7 +579,7 @@ switch(mode) {
     break;
 }
       try {
-        const response = await puter.ai.chat(prompt, { model: "gpt-5" });
+        const response = await puter.ai.chat(prompt, { model: "gpt-4o" });
         addMessage('ai', response);
       } catch (error) {
         addMessage('ai', 'Connection error. Please try again.');
@@ -680,4 +680,5 @@ switch(mode) {
     });
   </script>
 </body>
+
 </html>

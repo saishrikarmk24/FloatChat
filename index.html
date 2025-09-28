@@ -980,6 +980,13 @@
           <option value="proficient">Proficient</option>
           <option value="expert">Expert</option>
         </select>
+        <select id="language">
+          <option value="english">English</option>
+          <option value="hindi">Hindi</option>
+          <option value="tamil">Tamil</option>
+          <option value="telugu">Telugu</option>
+          <option value="kannada">Kannada</option>
+        </select>
       </div>
 
       <button class="btn btn-success" onclick="exportReport()">
@@ -1107,44 +1114,45 @@ You are FloatChat, an AI Ocean Data Assistant.
 - Adapt your answers to the chosen mode (novice, proficient, expert).
 `;
 
-    async function sendMessage() {
-      const query = userInput.value.trim();
-      const mode = document.getElementById('mode').value;
-      
-      if (!query) return;
+async function sendMessage() {
+  const query = userInput.value.trim();
+  const mode = document.getElementById('mode').value;
+  const language = document.getElementById('language').value;
 
-      addMessage('user', query);
-      userInput.value = '';
-      
-      // Enhanced loading animation
-      loadingSpinner.style.display = 'block';
-      const sendButton = document.querySelector('.btn');
-      sendButton.style.transform = 'translateY(-1px) scale(1.02)';
-      
-      let prompt = SYSTEM_PROMPT + "\nUser: " + query + "\nAssistant:";
+  if (!query) return;
 
-      switch(mode) {
-        case 'novice':
-          prompt = SYSTEM_PROMPT + "\nAnswer simply for a beginner. Question: " + query;
-          break;
-        case 'proficient':
-          prompt = SYSTEM_PROMPT + "\nGive a technical but concise explanation. Question: " + query;
-          break;
-        case 'expert':
-          prompt = SYSTEM_PROMPT + "\nProvide a research-level explanation. Question: " + query;
-          break;
-      }
+  addMessage('user', query);
+  userInput.value = '';
 
-      try {
-        const response = await puter.ai.chat(prompt, { model: "gpt-4o" });
-        addMessage('ai', response);
-      } catch (error) {
-        addMessage('ai', 'Connection error. Please try again.');
-      } finally {
-        loadingSpinner.style.display = 'none';
-        sendButton.style.transform = '';
-      }
-    }
+  loadingSpinner.style.display = 'block';
+  const sendButton = document.querySelector('.btn');
+  sendButton.style.transform = 'translateY(-1px) scale(1.02)';
+
+  let prompt = SYSTEM_PROMPT + "\nUser: " + query + "\nAssistant:";
+
+  // Adjust prompt based on mode
+  switch(mode) {
+    case 'novice':
+      prompt = SYSTEM_PROMPT + `\nAnswer simply for a beginner in ${language}. Question: ${query}`;
+      break;
+    case 'proficient':
+      prompt = SYSTEM_PROMPT + `\nGive a technical but concise explanation in ${language}. Question: ${query}`;
+      break;
+    case 'expert':
+      prompt = SYSTEM_PROMPT + `\nProvide a research-level explanation in ${language}. Question: ${query}`;
+      break;
+  }
+
+  try {
+    const response = await puter.ai.chat(prompt, { model: "gpt-4o" });
+    addMessage('ai', response);
+  } catch (error) {
+    addMessage('ai', 'Connection error. Please try again.');
+  } finally {
+    loadingSpinner.style.display = 'none';
+    sendButton.style.transform = '';
+  }
+}
 
     // Initialize map with enhanced animations
     const map = L.map('map', {
@@ -1274,7 +1282,7 @@ You are FloatChat, an AI Ocean Data Assistant.
       }
     });
 
-    // Enhanced export report with animations
+    // Enhanced export report with animations and proper PDF generation
     function exportReport() {
       const exportBtn = document.querySelector('.btn-success');
       const originalText = exportBtn.textContent;
@@ -1283,75 +1291,187 @@ You are FloatChat, an AI Ocean Data Assistant.
       exportBtn.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
       
       setTimeout(() => {
-        const { jsPDF } = window.jsPdf;
-        const doc = new jsPDF();
-        
-        // Enhanced PDF styling
-        doc.setFillColor(10, 10, 26);
-        doc.rect(0, 0, 210, 297, 'F');
-        
-        // Title with gradient effect simulation
-        doc.setTextColor(59, 130, 246);
-        doc.setFontSize(24);
-        doc.text('FloatChat Report', 20, 30);
-        
-        // Subtitle
-        doc.setTextColor(163, 163, 211);
-        doc.setFontSize(12);
-        doc.text('AI Ocean Intelligence Platform', 20, 40);
-        
-        // Date
-        doc.setTextColor(82, 82, 162);
-        doc.setFontSize(10);
-        doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 50);
-        
-        // Decorative line
-        doc.setDrawColor(37, 99, 235);
-        doc.setLineWidth(0.5);
-        doc.line(20, 55, 190, 55);
-        
-        // Messages
-        const messages = chat.querySelectorAll('.message');
-        let y = 70;
-        
-        doc.setFontSize(14);
-        doc.setTextColor(255, 255, 255);
-        doc.text('Conversation Log', 20, y);
-        y += 15;
-        
-        messages.forEach(msg => {
-          const isUser = msg.classList.contains('user');
-          const text = msg.lastChild.textContent;
-          
-          doc.setFontSize(10);
-          doc.setTextColor(isUser ? 59 : 163, isUser ? 130 : 163, isUser ? 246 : 211);
-          doc.text(`${isUser ? 'User' : 'AI'}: `, 20, y);
-          
-          doc.setTextColor(255, 255, 255);
-          const splitText = doc.splitTextToSize(text, 160);
-          doc.text(splitText, 40, y);
-          y += splitText.length * 6 + 8;
-          
-          if (y > 270) {
-            doc.addPage();
+        try {
+          // Check if jsPDF is available
+          if (typeof jspdf !== 'undefined') {
+            const doc = new jspdf.jsPDF();
+            
+            // Enhanced PDF styling
             doc.setFillColor(10, 10, 26);
             doc.rect(0, 0, 210, 297, 'F');
-            y = 20;
-          }
-        });
+            
+            // Title with gradient effect simulation
+            doc.setTextColor(59, 130, 246);
+            doc.setFontSize(24);
+            doc.text('FloatChat Report', 20, 30);
+            
+            // Subtitle
+            doc.setTextColor(163, 163, 211);
+            doc.setFontSize(12);
+            doc.text('AI Ocean Intelligence Platform', 20, 40);
+            
+            // Date
+            doc.setTextColor(82, 82, 162);
+            doc.setFontSize(10);
+            doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 50);
+            
+            // Decorative line
+            doc.setDrawColor(37, 99, 235);
+            doc.setLineWidth(0.5);
+            doc.line(20, 55, 190, 55);
+            
+            // Messages
+            const messages = chat.querySelectorAll('.message');
+            let y = 70;
+            
+            doc.setFontSize(14);
+            doc.setTextColor(255, 255, 255);
+            doc.text('Conversation Log', 20, y);
+            y += 15;
+            
+            messages.forEach(msg => {
+              const isUser = msg.classList.contains('user');
+              const text = msg.lastChild.textContent;
+              
+              doc.setFontSize(10);
+              doc.setTextColor(isUser ? 59 : 163, isUser ? 130 : 163, isUser ? 246 : 211);
+              doc.text(`${isUser ? 'User' : 'AI'}: `, 20, y);
+              
+              doc.setTextColor(255, 255, 255);
+              const splitText = doc.splitTextToSize(text, 160);
+              doc.text(splitText, 40, y);
+              y += splitText.length * 6 + 8;
+              
+              if (y > 270) {
+                doc.addPage();
+                doc.setFillColor(10, 10, 26);
+                doc.rect(0, 0, 210, 297, 'F');
+                y = 20;
+              }
+            });
 
-        doc.save('floatchat-report.pdf');
+            // Add map screenshot if available
+            try {
+              // This would require html2canvas or similar library
+              // For now, we'll just add a placeholder
+              if (y > 250) {
+                doc.addPage();
+                y = 20;
+              }
+              
+              doc.setTextColor(59, 130, 246);
+              doc.setFontSize(14);
+              doc.text('ARGO Network Map', 20, y);
+              y += 10;
+              
+              doc.setTextColor(163, 163, 211);
+              doc.setFontSize(10);
+              doc.text('Map visualization of active ARGO floats (screenshot not available)', 20, y);
+            } catch (e) {
+              console.log('Map screenshot not available');
+            }
+
+            doc.save('floatchat-report.pdf');
+            
+            // Success animation
+            exportBtn.textContent = '✓ Exported';
+            exportBtn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+            
+            // Show success message in chat
+            addMessage('ai', 'Report exported successfully! The PDF includes our conversation and ARGO network information.');
+            
+          } else {
+            throw new Error('PDF library not loaded');
+          }
+        } catch (error) {
+          console.error('Export error:', error);
+          
+          // Error state
+          exportBtn.textContent = '✗ Failed';
+          exportBtn.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+          
+          // Show error message in chat
+          addMessage('ai', 'Sorry, there was an error exporting the report. Please try again later.');
+        }
         
-        // Reset button
-        exportBtn.textContent = '✓ Exported';
-        exportBtn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-        
+        // Reset button after delay
         setTimeout(() => {
           exportBtn.textContent = originalText;
           exportBtn.style.background = '';
-        }, 2000);
+        }, 3000);
       }, 1000);
     }
+
+    // Alternative export formats
+    function exportAsText() {
+      const messages = chat.querySelectorAll('.message');
+      let textContent = 'FloatChat Conversation Report\n';
+      textContent += 'Generated: ' + new Date().toLocaleString() + '\n\n';
+      
+      messages.forEach(msg => {
+        const isUser = msg.classList.contains('user');
+        const text = msg.lastChild.textContent;
+        textContent += `${isUser ? 'User' : 'AI'}: ${text}\n\n`;
+      });
+      
+      const blob = new Blob([textContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'floatchat-conversation.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Add export menu to the controls
+    function addExportMenu() {
+      const exportBtn = document.querySelector('.btn-success');
+      exportBtn.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        
+        // Create export menu
+        const menu = document.createElement('div');
+        menu.style.cssText = `
+          position: absolute;
+          background: rgba(23, 23, 51, 0.95);
+          backdrop-filter: blur(20px);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          padding: 8px;
+          z-index: 1000;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+          min-width: 150px;
+        `;
+        
+        menu.innerHTML = `
+          <div style="padding: 8px 12px; cursor: pointer; border-radius: 6px; transition: background 0.2s;" 
+               onmouseover="this.style.background='rgba(59, 130, 246, 0.2)'" 
+               onmouseout="this.style.background='transparent'"
+               onclick="exportReport()">Export as PDF</div>
+          <div style="padding: 8px 12px; cursor: pointer; border-radius: 6px; transition: background 0.2s;" 
+               onmouseover="this.style.background='rgba(59, 130, 246, 0.2)'" 
+               onmouseout="this.style.background='transparent'"
+               onclick="exportAsText()">Export as Text</div>
+        `;
+        
+        menu.style.left = e.pageX + 'px';
+        menu.style.top = e.pageY + 'px';
+        
+        document.body.appendChild(menu);
+        
+        // Remove menu on click outside
+        const removeMenu = () => {
+          document.body.removeChild(menu);
+          document.removeEventListener('click', removeMenu);
+        };
+        setTimeout(() => document.addEventListener('click', removeMenu), 100);
+      });
+    }
+
+    // Initialize export menu when DOM is loaded
+    document.addEventListener('DOMContentLoaded', addExportMenu);
 
     // Enhanced input interactions
     userInput.addEventListener('keypress', (e) => {
@@ -1398,6 +1518,7 @@ You are FloatChat, an AI Ocean Data Assistant.
         panel.style.boxShadow = '';
       });
     });
+    
 
     // Dynamic background animation based on user activity
     let activityTimeout;
@@ -1414,6 +1535,7 @@ You are FloatChat, an AI Ocean Data Assistant.
     document.addEventListener('click', resetActivityTimer);
 
     resetActivityTimer();
+
   </script>
 </body>
 </html>

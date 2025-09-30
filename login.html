@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FloatChat - Authentication</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@100;200;300;400;500;600;700;800;900&family=JetBrains+Mono:wght@100;200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #0a0a1a;
+      --secondary: #1a1a2e;
+      --accent: #2563eb;
+      --accent-light: #3b82f6;
+      --surface: #0f0f23;
+      --surface-light: #171733;
+      --text-primary: #ffffff;
+      --text-secondary: #a3a3d3;
+      --text-muted: #5252a2;
+      --border: #262644;
+      --border-light: #404066;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --ocean-blue: #1e40af;
+      --ocean-teal: #0891b2;
+      --ocean-purple: #7c3aed;
+      --glow-blue: rgba(37, 99, 235, 0.6);
+      --glow-teal: rgba(8, 145, 178, 0.4);
+      --glow-purple: rgba(124, 58, 237, 0.3);
+    }
+
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      background: linear-gradient(-45deg, #0a0a1a, #1a1a2e, #0f0f23, #171733);
+      background-size: 400% 400%;
+      animation: gradientShift 15s ease infinite;
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      font-weight: 400;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 80%, var(--glow-blue) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, var(--glow-teal) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, var(--glow-purple) 0%, transparent 50%);
+      opacity: 0.1;
+      animation: floatingGlow 20s ease-in-out infinite;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    @keyframes floatingGlow {
+      0%, 100% { 
+        transform: scale(1) rotate(0deg);
+        opacity: 0.1;
+      }
+      33% { 
+        transform: scale(1.1) rotate(120deg);
+        opacity: 0.15;
+      }
+      66% { 
+        transform: scale(0.9) rotate(240deg);
+        opacity: 0.08;
+      }
+    }
+
+    .auth-container {
+      width: 100%;
+      max-width: 480px;
+      padding: 24px;
+      z-index: 10;
+    }
+
+    .auth-card {
+      background: rgba(15, 15, 35, 0.8);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px 32px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      animation: cardFadeIn 0.8s ease-out;
+    }
+
+    @keyframes cardFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .auth-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.5), rgba(8, 145, 178, 0.5), transparent);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+
+    .auth-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(8, 145, 178, 0.05) 50%, rgba(124, 58, 237, 0.05) 100%);
+      opacity: 0;
+      transition: all 0.4s ease;
+      pointer-events: none;
+    }
+
+    .auth-card:hover::before {
+      opacity: 1;
+    }
+
+    .auth-card:hover::after {
+      opacity: 1;
+    }
+
+    .auth-card:hover {
+      border-color: var(--border-light);
+      transform: translateY(-4px) scale(1.01);
+      box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.3),
+        0 0 40px rgba(37, 99, 235, 0.1);
+    }
+
+    .auth-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .auth-header h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      background: linear-gradient(135deg, #ffffff 0%, #3b82f6 50%, #0891b2 100%);
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 12px;
+      animation: textShimmer 3s ease-in-out infinite;
+      position: relative;
+    }
+
+    @keyframes textShimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    .auth-header p {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      font-weight: 300;
+      letter-spacing: -0.01em;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      transition: color 0.3s ease;
+    }
+
+    .form-input, .form-select {
+      width: 100%;
+      background: rgba(23, 23, 51, 0.8);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 1rem;
+      color: var(--text-primary);
+      font-family: inherit;
+      transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      outline: none;
+    }
+
+    .form-select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23a3a3d3'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+      background-size: 16px;
+    }
+
+    .form-input::placeholder {
+      color: var(--text-muted);
+      font-weight: 300;
+    }
+
+    .form-input:focus, .form-select:focus {
+      border-color: var(--accent);
+      box-shadow: 
+        0 0 0 3px var(--glow-blue),
+        0 8px 25px rgba(37, 99, 235, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .form-input.error, .form-select.error {
+      border-color: var(--error);
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+    }
+
+    .error-message {
+      color: var(--error);
+      font-size: 0.75rem;
+      margin-top: 6px;
+      display: none;
+    }
+
+    .preference-section {
+      background: rgba(23, 23, 51, 0.5);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .preference-section h3 {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .radio-label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .radio-label:hover {
+      background: rgba(59, 130, 246, 0.1);
+    }
+
+    .radio-input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent);
+    }
+
+    .radio-text {
+      font-size: 0.875rem;
+      color: var(--text-primary);
+    }
+
+    .radio-description {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .location-group {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .location-input {
+      flex: 1;
+    }
+
+    .btn {
+      width: 100%;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--ocean-blue) 100%);
+      color: white;
+      border: none;
+      border-radius: 16px;
+      padding: 16px 24px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      position: relative;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .btn:hover::before {
+      left: 100%;
+    }
+
+    .btn:hover {
+      background: linear-gradient(135deg, var(--accent-light) 0%, var(--ocean-teal) 100%);
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 
+        0 12px 30px rgba(37, 99, 235, 0.4),
+        0 0 30px rgba(37, 99, 235, 0.2);
+    }
+
+    .btn:active {
+      transform: translateY(-1px) scale(1.01);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, var(--surface-light) 0%, rgba(23, 23, 51, 0.9) 100%);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      padding: 12px 16px;
+      font-size: 0.75rem;
+    }
+
+    .btn-secondary:hover {
+      background: linear-gradient(135deg, var(--surface) 0%, rgba(38, 38, 68, 0.9) 100%);
+      border-color: var(--border-light);
+    }
+
+    .loading {
+      display: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top: 2px solid white;
+      border-radius: 50%;
+      animation: loadingSpin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes loadingSpin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .auth-footer {
+      text-align: center;
+      margin-top: 24px;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    .auth-footer a {
+      color: var(--accent-light);
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.3s ease;
+    }
+
+    .auth-footer a:hover {
+      color: var(--accent);
+    }
+
+    .success-message {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      color: var(--success);
+      font-size: 0.875rem;
+      display: none;
+    }
+
+    .error-message-container {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      color: var(--error);
+      font-size: 0.875rem;
+      display: none;
+    }
+
+    .location-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .location-status.success {
+      color: var(--success);
+    }
+
+    /* Floating particles */
+    .particle {
+      position: fixed;
+      width: 2px;
+      height: 2px;
+      background: rgba(59, 130, 246, 0.6);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .particle:nth-child(odd) {
+      background: rgba(8, 145, 178, 0.4);
+    }
+
+    .particle:nth-child(3n) {
+      background: rgba(124, 58, 237, 0.3);
+    }
+
+    /* Ocean wave animation */
+    .ocean-waves {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 100px;
+      background: linear-gradient(180deg, transparent, rgba(8, 145, 178, 0.05));
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .ocean-waves::before {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 200%;
+      height: 20px;
+      background: repeating-linear-gradient(
+        90deg,
+        transparent,
+        rgba(37, 99, 235, 0.1) 10px,
+        transparent 20px
+      );
+      animation: waveMove 15s linear infinite;
+    }
+
+    @keyframes waveMove {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .auth-container {
+        padding: 16px;
+      }
+      
+      .auth-card {
+        padding: 32px 24px;
+      }
+      
+      .auth-header h1 {
+        font-size: 2rem;
+      }
+      
+      .location-group {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="ocean-waves"></div>
+  
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <h1>FloatChat</h1>
+        <p>AI Ocean Intelligence Platform</p>
+      </div>
+      
+      <div id="successMessage" class="success-message"></div>
+      <div id="errorMessage" class="error-message-container"></div>
+      
+      <!-- Login Form -->
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="loginEmail" class="form-label">Email</label>
+          <input type="email" id="loginEmail" class="form-input" placeholder="Enter your email" required>
+          <div class="error-message" id="loginEmailError"></div>
+        </div>
+        
+        <div class="form-group">
+          <label for="loginPassword" class="form-label">Password</label>
+          <input type="password" id="loginPassword" class="form-input" placeholder="Enter your password" required>
+          <div class="error-message" id="loginPasswordError"></div>
+        </div>
+        
+        <button type="submit" class="btn" id="loginButton">
+          <span id="loginButtonText">Sign In</span>
+          <div class="loading" id="loginLoading"></div>
+        </button>
+      </form>
+      
+      <!-- Signup Form (initially hidden) -->
+      <form id="signupForm" style="display: none;">
+        <div class="form-group">
+          <label for="signupName" class="form-label">Full Name</label>
+          <input type="text" id="signupName" class="form-input" placeholder="Enter your full name" required>
+          <div class="error-message" id="signupNameError"></div>
+        </div>
+        
+        <div class="form-group">
+          <label for="signupEmail" class="form-label">Email</label>
+          <input type="email" id="signupEmail" class="form-input" placeholder="Enter your email" required>
+          <div class="error-message" id="signupEmailError"></div>
+        </div>
+        
+        <div class="form-group">
+          <label for="signupPassword" class="form-label">Password</label>
+          <input type="password" id="signupPassword" class="form-input" placeholder="Create a password (min. 6 characters)" required>
+          <div class="error-message" id="signupPasswordError"></div>
+        </div>
+        
+        <div class="form-group">
+          <label for="signupConfirmPassword" class="form-label">Confirm Password</label>
+          <input type="password" id="signupConfirmPassword" class="form-input" placeholder="Confirm your password" required>
+          <div class="error-message" id="signupConfirmPasswordError"></div>
+        </div>
+
+        <!-- User Preferences Section -->
+        <div class="preference-section">
+          <h3>Expertise Level</h3>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="expertise" value="novice" class="radio-input" checked>
+              <div>
+                <div class="radio-text">Novice</div>
+                <div class="radio-description">New to ocean science, need simple explanations</div>
+              </div>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="expertise" value="proficient" class="radio-input">
+              <div>
+                <div class="radio-text">Proficient</div>
+                <div class="radio-description">Some knowledge, comfortable with technical terms</div>
+              </div>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="expertise" value="expert" class="radio-input">
+              <div>
+                <div class="radio-text">Expert</div>
+                <div class="radio-description">Professional or researcher, need detailed technical data</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="preference-section">
+          <h3>Preferred Language</h3>
+          <div class="form-group">
+            <select id="preferredLanguage" class="form-select">
+              <option value="english">English</option>
+              <option value="hindi">Hindi</option>
+              <option value="tamil">Tamil</option>
+              <option value="telugu">Telugu</option>
+              <option value="kannada">Kannada</option>
+              <option value="malayalam">Malayalam</option>
+              <option value="bengali">Bengali</option>
+              <option value="marathi">Marathi</option>
+              <option value="gujarati">Gujarati</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="preference-section">
+          <h3>Location Information</h3>
+          <div class="form-group">
+            <label for="userCountry" class="form-label">Country/Region</label>
+            <div class="location-group">
+              <input type="text" id="userCountry" class="form-input location-input" placeholder="Enter your country" required>
+              <button type="button" class="btn btn-secondary" id="detectLocation">
+                Detect
+              </button>
+            </div>
+            <div class="location-status" id="locationStatus"></div>
+          </div>
+          
+          <div class="form-group">
+            <label class="radio-label">
+              <input type="checkbox" id="shareLocation" class="radio-input">
+              <div>
+                <div class="radio-text">Share precise location for better ocean data</div>
+                <div class="radio-description">Get ARGO float data specific to your region</div>
+              </div>
+            </label>
+          </div>
+        </div>
+        
+        <button type="submit" class="btn" id="signupButton">
+          <span id="signupButtonText">Create Account</span>
+          <div class="loading" id="signupLoading"></div>
+        </button>
+      </form>
+      
+      <div class="auth-footer">
+        <span id="toggleText">Don't have an account? </span>
+        <a href="#" id="toggleLink">Sign up</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Create floating particles
+    function createParticles() {
+      for (let i = 0; i < 30; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.top = Math.random() * 100 + '%';
+        particle.style.animationDuration = (Math.random() * 20 + 10) + 's';
+        particle.style.animationDelay = Math.random() * 5 + 's';
+        particle.style.animation = `floatParticle ${Math.random() * 20 + 10}s linear infinite`;
+        document.body.appendChild(particle);
+      }
+    }
+
+    // Add particle animation
+    const particleStyle = document.createElement('style');
+    particleStyle.textContent = `
+      @keyframes floatParticle {
+        0% {
+          transform: translateY(100vh) translateX(0px);
+          opacity: 0;
+        }
+        10% {
+          opacity: 1;
+        }
+        90% {
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(-100px) translateX(${Math.random() * 200 - 100}px);
+          opacity: 0;
+        }
+      }
+    `;
+    document.head.appendChild(particleStyle);
+
+    createParticles();
+
+    // DOM Elements
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const toggleLink = document.getElementById('toggleLink');
+    const toggleText = document.getElementById('toggleText');
+    const successMessage = document.getElementById('successMessage');
+    const errorMessage = document.getElementById('errorMessage');
+    const detectLocationBtn = document.getElementById('detectLocation');
+    const locationStatus = document.getElementById('locationStatus');
+
+    // Toggle between login and signup forms
+    toggleLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      
+      if (loginForm.style.display === 'none') {
+        // Switch to login
+        loginForm.style.display = 'block';
+        signupForm.style.display = 'none';
+        toggleText.textContent = "Don't have an account? ";
+        toggleLink.textContent = "Sign up";
+      } else {
+        // Switch to signup
+        loginForm.style.display = 'none';
+        signupForm.style.display = 'block';
+        toggleText.textContent = "Already have an account? ";
+        toggleLink.textContent = "Sign in";
+      }
+      
+      // Clear messages
+      clearMessages();
+      clearFormErrors();
+    });
+
+    // Clear all messages
+    function clearMessages() {
+      successMessage.style.display = 'none';
+      errorMessage.style.display = 'none';
+    }
+
+    // Clear form errors
+    function clearFormErrors() {
+      const errorMessages = document.querySelectorAll('.error-message');
+      errorMessages.forEach(error => {
+        error.style.display = 'none';
+        error.textContent = '';
+      });
+      
+      const inputs = document.querySelectorAll('.form-input, .form-select');
+      inputs.forEach(input => {
+        input.classList.remove('error');
+      });
+    }
+
+    // Show error message
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorMessage.style.display = 'block';
+      successMessage.style.display = 'none';
+    }
+
+    // Show success message
+    function showSuccess(message) {
+      successMessage.textContent = message;
+      successMessage.style.display = 'block';
+      errorMessage.style.display = 'none';
+    }
+
+    // Show field error
+    function showFieldError(fieldId, message) {
+      const field = document.getElementById(fieldId);
+      const errorElement = document.getElementById(fieldId + 'Error');
+      
+      if (field) {
+        field.classList.add('error');
+      }
+      if (errorElement) {
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+      }
+    }
+
+    // Hash password using SHA-256
+    function hashPassword(password) {
+      return CryptoJS.SHA256(password).toString();
+    }
+
+    // Validate email format
+    function isValidEmail(email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(email);
+    }
+
+    // Validate password strength
+    function isValidPassword(password) {
+      return password.length >= 6;
+    }
+
+    // Get user preferences from form
+    function getUserPreferences() {
+      const expertise = document.querySelector('input[name="expertise"]:checked').value;
+      const preferredLanguage = document.getElementById('preferredLanguage').value;
+      const country = document.getElementById('userCountry').value;
+      const shareLocation = document.getElementById('shareLocation').checked;
+      
+      return {
+        expertise,
+        preferredLanguage,
+        location: {
+          country,
+          sharePreciseLocation: shareLocation
+        },
+        preferencesSet: true
+      };
+    }
+
+    // Detect user's location using browser geolocation
+    detectLocationBtn.addEventListener('click', function() {
+      if (!navigator.geolocation) {
+        locationStatus.textContent = "Geolocation is not supported by this browser.";
+        locationStatus.className = 'location-status';
+        return;
+      }
+
+      locationStatus.textContent = "Detecting location...";
+      locationStatus.className = 'location-status';
+
+      navigator.geolocation.getCurrentPosition(
+        async function(position) {
+          const latitude = position.coords.latitude;
+          const longitude = position.coords.longitude;
+          
+          try {
+            // Use reverse geocoding to get country from coordinates
+            const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
+            const data = await response.json();
+            
+            if (data.countryName) {
+              document.getElementById('userCountry').value = data.countryName;
+              locationStatus.textContent = `Location detected: ${data.countryName}`;
+              locationStatus.className = 'location-status success';
+            } else {
+              locationStatus.textContent = "Could not determine country from location.";
+              locationStatus.className = 'location-status';
+            }
+          } catch (error) {
+            console.error('Geocoding error:', error);
+            locationStatus.textContent = "Error detecting location. Please enter manually.";
+            locationStatus.className = 'location-status';
+          }
+        },
+        function(error) {
+          let errorMessage = "Location detection failed. ";
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage += "Please allow location access or enter manually.";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage += "Location information unavailable.";
+              break;
+            case error.TIMEOUT:
+              errorMessage += "Location request timed out.";
+              break;
+            default:
+              errorMessage += "An unknown error occurred.";
+              break;
+          }
+          locationStatus.textContent = errorMessage;
+          locationStatus.className = 'location-status';
+        }
+      );
+    });
+
+    // Simulate database connection and operations
+    class Database {
+      constructor() {
+        // In a real application, this would connect to an actual database
+        // For this demo, we'll use localStorage to simulate a database
+        this.usersKey = 'floatChatUsers';
+        this.initDatabase();
+      }
+      
+      initDatabase() {
+        if (!localStorage.getItem(this.usersKey)) {
+          // Initialize with some demo users
+          const demoUsers = [
+            {
+              id: 1,
+              name: 'Demo User',
+              email: 'demo@floatchat.com',
+              password: hashPassword('demo123'),
+              preferences: {
+                expertise: 'novice',
+                preferredLanguage: 'english',
+                location: {
+                  country: 'India',
+                  sharePreciseLocation: false
+                },
+                preferencesSet: true
+              },
+              createdAt: new Date().toISOString()
+            }
+          ];
+          localStorage.setItem(this.usersKey, JSON.stringify(demoUsers));
+        }
+      }
+      
+      // Find user by email
+      findUserByEmail(email) {
+        const users = JSON.parse(localStorage.getItem(this.usersKey) || '[]');
+        return users.find(user => user.email === email);
+      }
+      
+      // Create new user
+      createUser(userData) {
+        const users = JSON.parse(localStorage.getItem(this.usersKey) || '[]');
+        const newUser = {
+          id: Date.now(), // Simple ID generation
+          ...userData,
+          createdAt: new Date().toISOString()
+        };
+        users.push(newUser);
+        localStorage.setItem(this.usersKey, JSON.stringify(users));
+        return newUser;
+      }
+      
+      // Verify user credentials
+      verifyUser(email, password) {
+        const user = this.findUserByEmail(email);
+        if (!user) return null;
+        
+        const hashedPassword = hashPassword(password);
+        if (user.password === hashedPassword) {
+          return user;
+        }
+        return null;
+      }
+    }
+
+    // Initialize database
+    const db = new Database();
+
+    // Login form submission
+    loginForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      clearMessages();
+      clearFormErrors();
+      
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const loginButton = document.getElementById('loginButton');
+      const loginButtonText = document.getElementById('loginButtonText');
+      const loginLoading = document.getElementById('loginLoading');
+      
+      // Validation
+      if (!email) {
+        showFieldError('loginEmail', 'Email is required');
+        return;
+      }
+      
+      if (!isValidEmail(email)) {
+        showFieldError('loginEmail', 'Please enter a valid email address');
+        return;
+      }
+      
+      if (!password) {
+        showFieldError('loginPassword', 'Password is required');
+        return;
+      }
+      
+      // Show loading state
+      loginButton.disabled = true;
+      loginButtonText.style.display = 'none';
+      loginLoading.style.display = 'block';
+      
+      try {
+        // Simulate API call delay
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Verify user credentials
+        const user = db.verifyUser(email, password);
+        
+        if (user) {
+          // Store user session with preferences
+          localStorage.setItem('floatChatUser', JSON.stringify({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            preferences: user.preferences || {
+              expertise: 'novice',
+              preferredLanguage: 'english',
+              location: { country: 'Unknown', sharePreciseLocation: false },
+              preferencesSet: false
+            }
+          }));
+          
+          showSuccess('Login successful! Redirecting...');
+          
+          // Redirect to FloatChat app after a short delay
+          setTimeout(() => {
+            window.location.href = 'floatchat.html'; // Redirect to your FloatChat app
+          }, 1500);
+        } else {
+          showError('Invalid email or password');
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        showError('An error occurred during login. Please try again.');
+      } finally {
+        // Reset loading state
+        loginButton.disabled = false;
+        loginButtonText.style.display = 'block';
+        loginLoading.style.display = 'none';
+      }
+    });
+
+    // Signup form submission
+    signupForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      clearMessages();
+      clearFormErrors();
+      
+      const name = document.getElementById('signupName').value.trim();
+      const email = document.getElementById('signupEmail').value.trim();
+      const password = document.getElementById('signupPassword').value;
+      const confirmPassword = document.getElementById('signupConfirmPassword').value;
+      const country = document.getElementById('userCountry').value.trim();
+      const signupButton = document.getElementById('signupButton');
+      const signupButtonText = document.getElementById('signupButtonText');
+      const signupLoading = document.getElementById('signupLoading');
+      
+      // Validation
+      let isValid = true;
+      
+      if (!name) {
+        showFieldError('signupName', 'Full name is required');
+        isValid = false;
+      }
+      
+      if (!email) {
+        showFieldError('signupEmail', 'Email is required');
+        isValid = false;
+      } else if (!isValidEmail(email)) {
+        showFieldError('signupEmail', 'Please enter a valid email address');
+        isValid = false;
+      }
+      
+      if (!password) {
+        showFieldError('signupPassword', 'Password is required');
+        isValid = false;
+      } else if (!isValidPassword(password)) {
+        showFieldError('signupPassword', 'Password must be at least 6 characters long');
+        isValid = false;
+      }
+      
+      if (!confirmPassword) {
+        showFieldError('signupConfirmPassword', 'Please confirm your password');
+        isValid = false;
+      } else if (password !== confirmPassword) {
+        showFieldError('signupConfirmPassword', 'Passwords do not match');
+        isValid = false;
+      }
+
+      if (!country) {
+        showFieldError('userCountry', 'Country is required');
+        isValid = false;
+      }
+      
+      if (!isValid) return;
+      
+      // Check if user already exists
+      if (db.findUserByEmail(email)) {
+        showFieldError('signupEmail', 'An account with this email already exists');
+        return;
+      }
+      
+      // Show loading state
+      signupButton.disabled = true;
+      signupButtonText.style.display = 'none';
+      signupLoading.style.display = 'block';
+      
+      try {
+        // Simulate API call delay
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Get user preferences
+        const preferences = getUserPreferences();
+        
+        // Create new user
+        const hashedPassword = hashPassword(password);
+        const newUser = db.createUser({
+          name,
+          email,
+          password: hashedPassword,
+          preferences
+        });
+        
+        // Store user session with preferences
+        localStorage.setItem('floatChatUser', JSON.stringify({
+          id: newUser.id,
+          name: newUser.name,
+          email: newUser.email,
+          preferences: newUser.preferences
+        }));
+        
+        showSuccess('Account created successfully! Redirecting...');
+        
+        // Redirect to FloatChat app after a short delay
+        setTimeout(() => {
+          window.location.href = 'floatchat.html'; // Redirect to your FloatChat app
+        }, 1500);
+      } catch (error) {
+        console.error('Signup error:', error);
+        showError('An error occurred during signup. Please try again.');
+      } finally {
+        // Reset loading state
+        signupButton.disabled = false;
+        signupButtonText.style.display = 'block';
+        signupLoading.style.display = 'none';
+      }
+    });
+
+    // Check if user is already logged in
+    function checkAuthStatus() {
+      const user = localStorage.getItem('floatChatUser');
+      if (user) {
+        // User is already logged in, redirect to app
+        window.location.href = 'floatchat.html';
+      }
+    }
+
+    // Initialize the page
+    document.addEventListener('DOMContentLoaded', function() {
+      checkAuthStatus();
+      
+      // Add smooth page transitions
+      document.body.style.opacity = '0';
+      setTimeout(() => {
+        document.body.style.transition = 'opacity 0.6s ease';
+        document.body.style.opacity = '1';
+      }, 100);
+    });
+  </script>
+</body>
+</html>
